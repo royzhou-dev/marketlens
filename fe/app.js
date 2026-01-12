@@ -2,6 +2,8 @@ const API_BASE = 'http://localhost:5000/api';
 let allTickers = [];
 let currentTicker = '';
 let chartInstance = null;
+let highlightedIndex = -1;
+let dropdownItems = [];
 
 // Cache TTL configuration (in minutes)
 const CACHE_TTL = {
@@ -55,6 +57,142 @@ const cache = {
 // Expose cache to global scope for debugging
 window.stockCache = cache;
 
+// Recent/Popular Ticker Functions
+function getRecentTickers() {
+    try {
+        const recent = localStorage.getItem('recentTickers');
+        if (recent) {
+            return JSON.parse(recent);
+        }
+    } catch (error) {
+        console.error('Error reading recent tickers:', error);
+    }
+    return [];
+}
+
+function saveRecentTicker(ticker, title) {
+    try {
+        let recent = getRecentTickers();
+
+        // Remove if already exists
+        recent = recent.filter(item => item.ticker !== ticker);
+
+        // Add to front
+        recent.unshift({ ticker, title });
+
+        // Keep only 5 most recent
+        recent = recent.slice(0, 5);
+
+        localStorage.setItem('recentTickers', JSON.stringify(recent));
+    } catch (error) {
+        console.error('Error saving recent ticker:', error);
+    }
+}
+
+function getPopularTickers() {
+    const popularSymbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD'];
+    return allTickers.filter(ticker => popularSymbols.includes(ticker.ticker));
+}
+
+// Dropdown control functions
+function showDropdown() {
+    document.getElementById('dropdownList').classList.remove('hidden');
+}
+
+function hideDropdown() {
+    document.getElementById('dropdownList').classList.add('hidden');
+    highlightedIndex = -1;
+}
+
+function populateDropdown(tickers, searchTerm = '') {
+    const dropdown = document.getElementById('dropdownList');
+    dropdown.innerHTML = '';
+    dropdownItems = [];
+
+    if (searchTerm === '') {
+        // Show recent and popular tickers
+        const recent = getRecentTickers();
+        const popular = getPopularTickers();
+
+        if (recent.length > 0) {
+            const recentHeader = document.createElement('div');
+            recentHeader.className = 'dropdown-section-header';
+            recentHeader.textContent = 'Recent';
+            dropdown.appendChild(recentHeader);
+
+            recent.forEach(item => {
+                const div = createDropdownItem(item.ticker, item.title);
+                dropdown.appendChild(div);
+                dropdownItems.push({ element: div, ticker: item.ticker, title: item.title });
+            });
+        }
+
+        if (popular.length > 0) {
+            const popularHeader = document.createElement('div');
+            popularHeader.className = 'dropdown-section-header';
+            popularHeader.textContent = 'Popular';
+            dropdown.appendChild(popularHeader);
+
+            popular.forEach(item => {
+                const div = createDropdownItem(item.ticker, item.title);
+                dropdown.appendChild(div);
+                dropdownItems.push({ element: div, ticker: item.ticker, title: item.title });
+            });
+        }
+    } else {
+        // Show filtered results
+        const limited = tickers.slice(0, 50);
+
+        if (limited.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'dropdown-no-results';
+            noResults.textContent = 'No results found';
+            dropdown.appendChild(noResults);
+        } else {
+            limited.forEach(item => {
+                const div = createDropdownItem(item.ticker, item.title);
+                dropdown.appendChild(div);
+                dropdownItems.push({ element: div, ticker: item.ticker, title: item.title });
+            });
+        }
+    }
+}
+
+function createDropdownItem(ticker, title) {
+    const div = document.createElement('div');
+    div.className = 'dropdown-item';
+    div.textContent = `${ticker} - ${title}`;
+    div.dataset.ticker = ticker;
+    div.dataset.title = title;
+
+    // Use mousedown instead of click to fire before blur
+    div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectTicker(ticker, title);
+    });
+
+    return div;
+}
+
+function selectTicker(ticker, title) {
+    const input = document.getElementById('tickerSearch');
+    input.value = `${ticker} - ${title}`;
+    currentTicker = ticker;
+    hideDropdown();
+    saveRecentTicker(ticker, title);
+    loadStockData(ticker);
+}
+
+function highlightItem(index) {
+    // Remove all highlights
+    dropdownItems.forEach(item => item.element.classList.remove('highlighted'));
+
+    if (index >= 0 && index < dropdownItems.length) {
+        dropdownItems[index].element.classList.add('highlighted');
+        dropdownItems[index].element.scrollIntoView({ block: 'nearest' });
+    }
+}
+
 // Load tickers on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTickers();
@@ -72,42 +210,106 @@ async function loadTickers() {
             title: item.title,
             cik: item.cik_str
         }));
-
-        populateTickerSelect(allTickers);
     } catch (error) {
         console.error('Error loading tickers:', error);
     }
 }
 
-function populateTickerSelect(tickers) {
-    const select = document.getElementById('tickerSelect');
-    select.innerHTML = '';
-
-    tickers.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.ticker;
-        option.textContent = `${item.ticker} - ${item.title}`;
-        select.appendChild(option);
-    });
-}
-
 function setupEventListeners() {
     const tickerSearch = document.getElementById('tickerSearch');
-    const tickerSelect = document.getElementById('tickerSelect');
+    const dropdownContainer = document.querySelector('.dropdown-container');
 
-    tickerSearch.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const filtered = allTickers.filter(item =>
-            item.ticker.toLowerCase().includes(searchTerm) ||
-            item.title.toLowerCase().includes(searchTerm)
-        );
-        populateTickerSelect(filtered);
+    // Input focus - show dropdown with recent/popular or current results
+    tickerSearch.addEventListener('focus', (e) => {
+        const searchTerm = e.target.value.trim();
+        if (searchTerm === '') {
+            populateDropdown([], '');
+        } else {
+            // Select all text for easy replacement
+            e.target.select();
+            const filtered = allTickers.filter(item =>
+                item.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.title.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            populateDropdown(filtered, searchTerm);
+        }
+        showDropdown();
     });
 
-    tickerSelect.addEventListener('change', async (e) => {
-        const ticker = e.target.value;
-        if (ticker) {
-            await loadStockData(ticker);
+    // Input blur - hide dropdown with delay
+    tickerSearch.addEventListener('blur', () => {
+        setTimeout(() => {
+            hideDropdown();
+        }, 200);
+    });
+
+    // Input keydown - handle keyboard navigation
+    tickerSearch.addEventListener('keydown', (e) => {
+        const dropdown = document.getElementById('dropdownList');
+        const isOpen = !dropdown.classList.contains('hidden');
+
+        if (!isOpen && e.key !== 'Escape') return;
+
+        switch(e.key) {
+            case 'Escape':
+                if (e.target.value) {
+                    e.target.value = '';
+                    populateDropdown([], '');
+                    showDropdown();
+                } else {
+                    hideDropdown();
+                }
+                break;
+
+            case 'ArrowDown':
+                e.preventDefault();
+                highlightedIndex++;
+                if (highlightedIndex >= dropdownItems.length) {
+                    highlightedIndex = 0;
+                }
+                highlightItem(highlightedIndex);
+                break;
+
+            case 'ArrowUp':
+                e.preventDefault();
+                highlightedIndex--;
+                if (highlightedIndex < 0) {
+                    highlightedIndex = dropdownItems.length - 1;
+                }
+                highlightItem(highlightedIndex);
+                break;
+
+            case 'Enter':
+                e.preventDefault();
+                if (highlightedIndex >= 0 && highlightedIndex < dropdownItems.length) {
+                    const item = dropdownItems[highlightedIndex];
+                    selectTicker(item.ticker, item.title);
+                }
+                break;
+        }
+    });
+
+    // Input input - filter and show results
+    tickerSearch.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim();
+        highlightedIndex = -1;
+
+        if (searchTerm === '') {
+            populateDropdown([], '');
+        } else {
+            const filtered = allTickers.filter(item =>
+                item.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.title.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            populateDropdown(filtered, searchTerm);
+        }
+        showDropdown();
+    });
+
+    // Click outside to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!dropdownContainer.contains(e.target)) {
+            hideDropdown();
         }
     });
 
@@ -142,9 +344,7 @@ function switchTab(tabName) {
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
 
-    if (tabName === 'chart' && currentTicker) {
-        loadChartData(currentTicker, '1M');
-    } else if (tabName === 'financials' && currentTicker) {
+    if (tabName === 'financials' && currentTicker) {
         loadFinancials(currentTicker);
     } else if (tabName === 'news' && currentTicker) {
         loadNews(currentTicker);
@@ -165,13 +365,12 @@ async function loadStockData(ticker) {
     try {
         await Promise.all([
             loadTickerDetails(ticker),
-            loadPreviousClose(ticker)
+            loadPreviousClose(ticker),
+            loadChartData(ticker, '1M')
         ]);
 
         const activeTab = document.querySelector('.tab-button.active').dataset.tab;
-        if (activeTab === 'chart') {
-            await loadChartData(ticker, '1M');
-        } else if (activeTab === 'financials') {
+        if (activeTab === 'financials') {
             await loadFinancials(ticker);
         } else if (activeTab === 'news') {
             await loadNews(ticker);
@@ -439,11 +638,12 @@ function renderFinancials(data, container) {
 
         data.results.forEach(period => {
             const financials = period.financials;
-            const date = new Date(period.fiscal_period).toLocaleDateString();
+            const endDate = period.end_date ? new Date(period.end_date).toLocaleDateString() : '';
+            const dateDisplay = endDate ? ` (${endDate})` : '';
 
             html += `
                 <div class="financial-period">
-                    <h4>${period.fiscal_year} - ${period.fiscal_period} (${date})</h4>
+                    <h4>${period.fiscal_year} - ${period.fiscal_period}${dateDisplay}</h4>
                     <div class="financial-grid">
             `;
 

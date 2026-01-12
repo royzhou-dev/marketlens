@@ -19,11 +19,14 @@
         </header>
 
         <div class="ticker-selector">
-            <label for="tickerSelect">Select a Stock:</label>
-            <input type="text" id="tickerSearch" placeholder="Search ticker or company name...">
-            <select id="tickerSelect" size="10">
-                <option value="">-- Loading tickers... --</option>
-            </select>
+            <label for="tickerSearch">Select a Stock:</label>
+            <div class="dropdown-container">
+                <input type="text"
+                       id="tickerSearch"
+                       placeholder="Search ticker or company name..."
+                       autocomplete="off">
+                <div id="dropdownList" class="dropdown-list hidden"></div>
+            </div>
         </div>
 
         <div id="stockData" class="stock-data hidden">
@@ -34,7 +37,6 @@
 
             <div class="tabs">
                 <button class="tab-button active" data-tab="overview">Overview</button>
-                <button class="tab-button" data-tab="chart">Chart</button>
                 <button class="tab-button" data-tab="financials">Financials</button>
                 <button class="tab-button" data-tab="dividends">Dividends</button>
                 <button class="tab-button" data-tab="splits">Splits</button>
@@ -44,6 +46,17 @@
 
             <div class="tab-content">
                 <div id="overview" class="tab-pane active">
+                    <div class="chart-section">
+                        <h3>Price Chart</h3>
+                        <div class="chart-controls">
+                            <button class="chart-range-btn active" data-range="1M">1M</button>
+                            <button class="chart-range-btn" data-range="3M">3M</button>
+                            <button class="chart-range-btn" data-range="6M">6M</button>
+                            <button class="chart-range-btn" data-range="1Y">1Y</button>
+                            <button class="chart-range-btn" data-range="5Y">5Y</button>
+                        </div>
+                        <canvas id="priceChart"></canvas>
+                    </div>
                     <div class="metrics-grid">
                         <div class="metric-card">
                             <div class="metric-label">Open</div>
@@ -74,17 +87,6 @@
                         <h3>Company Description</h3>
                         <p id="companyDesc">--</p>
                     </div>
-                </div>
-
-                <div id="chart" class="tab-pane">
-                    <div class="chart-controls">
-                        <button class="chart-range-btn active" data-range="1M">1M</button>
-                        <button class="chart-range-btn" data-range="3M">3M</button>
-                        <button class="chart-range-btn" data-range="6M">6M</button>
-                        <button class="chart-range-btn" data-range="1Y">1Y</button>
-                        <button class="chart-range-btn" data-range="5Y">5Y</button>
-                    </div>
-                    <canvas id="priceChart"></canvas>
                 </div>
 
                 <div id="financials" class="tab-pane">
