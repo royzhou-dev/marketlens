@@ -3,12 +3,10 @@ Flask-CORS==4.0.0
 requests==2.31.0
 python-dotenv==1.0.0
 
-# New for chatbot
-openai==1.12.0
+# Chatbot (using Google Gemini - FREE)
 google-generativeai==0.8.3
 faiss-cpu==1.7.4
 numpy==1.24.3
 beautifulsoup4==4.12.3
 lxml==5.1.0
-tiktoken==0.5.2
 tenacity==8.2.3

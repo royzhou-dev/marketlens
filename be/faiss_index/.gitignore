@@ -1,6 +1,0 @@
-# Ignore FAISS index files (local storage)
-*.faiss
-*.json
-
-# Keep the directory structure
-!.gitignore

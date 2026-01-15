@@ -109,7 +109,7 @@ def get_market_status():
 register_chat_routes(app)
 
 # Graceful shutdown handler for FAISS
-from chat_service import chat_service
+from chat_routes import chat_service
 
 def shutdown_handler():
     """Save FAISS index on graceful shutdown"""

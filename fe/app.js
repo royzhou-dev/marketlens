@@ -181,6 +181,7 @@ function selectTicker(ticker, title) {
     hideDropdown();
     saveRecentTicker(ticker, title);
     loadStockData(ticker);
+    updateChatContext();
 }
 
 function highlightItem(index) {
@@ -332,6 +333,9 @@ function setupEventListeners() {
             button.classList.add('active');
         });
     });
+
+    // Setup chat listeners
+    setupChatListeners();
 }
 
 function switchTab(tabName) {
@@ -727,6 +731,9 @@ async function loadNews(ticker) {
         cache.set(cacheKey, data, CACHE_TTL.SHORT);
 
         renderNews(data, container);
+
+        // Trigger article scraping in background
+        scrapeAndEmbedArticles();
     } catch (error) {
         console.error('Error loading news:', error);
         container.innerHTML = '<p>Error loading news.</p>';
@@ -977,4 +984,212 @@ function getFrequencyText(frequency) {
         52: 'Weekly'
     };
     return frequencies[frequency] || 'Unknown';
+}
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+
+// Chat state management
+let chatState = {
+    conversationId: generateUUID(),
+    messages: [],
+    isOpen: false,
+    isLoading: false
+};
+
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function toggleChatSidebar() {
+    const sidebar = document.getElementById('chatSidebar');
+    chatState.isOpen = !chatState.isOpen;
+
+    if (chatState.isOpen) {
+        sidebar.classList.add('open');
+        updateChatContext();
+    } else {
+        sidebar.classList.remove('open');
+    }
+}
+
+function updateChatContext() {
+    const contextEl = document.getElementById('chatCurrentTicker');
+
+    if (currentTicker) {
+        const detailsCache = cache.get(`details_${currentTicker}`);
+        const companyName = detailsCache?.results?.name || currentTicker;
+        contextEl.textContent = `${currentTicker} - ${companyName}`;
+    } else {
+        contextEl.textContent = 'Select a stock to start';
+    }
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    if (!currentTicker) {
+        addMessageToChat('error', 'Please select a stock first.');
+        return;
+    }
+
+    // Add user message to UI
+    addMessageToChat('user', message);
+    input.value = '';
+
+    // Disable input while processing
+    input.disabled = true;
+    document.getElementById('sendChatBtn').disabled = true;
+
+    // Show loading indicator
+    const loadingId = addMessageToChat('loading', '');
+
+    // Collect current stock context from cache
+    const context = {
+        overview: {
+            details: cache.get(`details_${currentTicker}`),
+            previousClose: cache.get(`prev_close_${currentTicker}`)
+        },
+        financials: cache.get(`financials_${currentTicker}`),
+        news: cache.get(`news_${currentTicker}`),
+        dividends: cache.get(`dividends_${currentTicker}`),
+        splits: cache.get(`splits_${currentTicker}`)
+    };
+
+    try {
+        // Call chat API with streaming
+        const response = await fetch(`${API_BASE}/chat/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticker: currentTicker,
+                message: message,
+                context: context,
+                conversation_id: chatState.conversationId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Remove loading indicator
+        removeMessage(loadingId);
+
+        // Handle streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let assistantMessage = '';
+        const messageId = addMessageToChat('assistant', '');
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            assistantMessage += chunk;
+            updateMessage(messageId, assistantMessage);
+        }
+
+        // Save to chat state
+        chatState.messages.push(
+            { role: 'user', content: message },
+            { role: 'assistant', content: assistantMessage }
+        );
+
+    } catch (error) {
+        console.error('Chat error:', error);
+        removeMessage(loadingId);
+        addMessageToChat('error', 'Failed to get response. Please try again.');
+    } finally {
+        // Re-enable input
+        input.disabled = false;
+        document.getElementById('sendChatBtn').disabled = false;
+        input.focus();
+    }
+}
+
+function addMessageToChat(type, content) {
+    const container = document.getElementById('chatMessages');
+    const messageId = generateUUID();
+
+    const messageDiv = document.createElement('div');
+    messageDiv.id = messageId;
+    messageDiv.className = `message ${type}`;
+
+    if (type === 'loading') {
+        messageDiv.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    } else {
+        messageDiv.textContent = content;
+    }
+
+    container.appendChild(messageDiv);
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+    return messageId;
+}
+
+function updateMessage(messageId, content) {
+    const messageDiv = document.getElementById(messageId);
+    if (messageDiv) {
+        messageDiv.textContent = content;
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+}
+
+function removeMessage(messageId) {
+    const messageDiv = document.getElementById(messageId);
+    if (messageDiv) {
+        messageDiv.remove();
+    }
+}
+
+// Background job to scrape and embed articles when News tab is loaded
+async function scrapeAndEmbedArticles() {
+    if (!currentTicker) return;
+
+    const newsCache = cache.get(`news_${currentTicker}`);
+    if (!newsCache || !newsCache.results) return;
+
+    try {
+        // Call scrape endpoint in background (don't await)
+        fetch(`${API_BASE}/chat/scrape-articles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticker: currentTicker,
+                articles: newsCache.results
+            })
+        }).then(response => response.json())
+          .then(result => {
+              console.log('Article scraping complete:', result);
+          })
+          .catch(error => {
+              console.error('Article scraping error:', error);
+          });
+    } catch (error) {
+        console.error('Failed to initiate article scraping:', error);
+    }
+}
+
+// Setup chat event listeners
+function setupChatListeners() {
+    document.getElementById('toggleChatBtn').addEventListener('click', toggleChatSidebar);
+    document.getElementById('closeChatBtn').addEventListener('click', toggleChatSidebar);
+    document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
+
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
 }

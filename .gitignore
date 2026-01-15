@@ -1,5 +1,12 @@
  # Environment variables
 .env
+.venv
+.gitignore
+CHATBOT_SETUP.md
+
+# FAISS vector database (local storage)
+be/faiss_index/*.faiss
+be/faiss_index/*.json
 
 # Python
 __pycache__/

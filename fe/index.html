@@ -126,6 +126,32 @@
         </div>
     </div>
 
+    <!-- Chat Sidebar -->
+    <div id="chatSidebar" class="chat-sidebar">
+        <div class="chat-header">
+            <h3>AI Assistant</h3>
+            <button id="closeChatBtn" class="close-chat-btn">&times;</button>
+        </div>
+
+        <div class="chat-ticker-context">
+            <span id="chatCurrentTicker">Select a stock to start</span>
+        </div>
+
+        <div id="chatMessages" class="chat-messages">
+            <!-- Messages populated dynamically -->
+        </div>
+
+        <div class="chat-input-container">
+            <textarea id="chatInput"
+                      placeholder="Ask about this stock..."
+                      rows="2"></textarea>
+            <button id="sendChatBtn" class="send-chat-btn">Send</button>
+        </div>
+    </div>
+
+    <!-- Toggle Chat Button -->
+    <button id="toggleChatBtn" class="toggle-chat-btn">AI Chat</button>
+
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,12 +1,11 @@
-from openai import OpenAI
+import google.generativeai as genai
 import faiss
 import numpy as np
 import json
 import os
 from pathlib import Path
-import tiktoken
 from config import (
-    OPENAI_API_KEY,
+    GEMINI_API_KEY,
     FAISS_INDEX_PATH,
     EMBEDDING_MODEL,
     RAG_TOP_K
@@ -14,12 +13,11 @@ from config import (
 
 
 class EmbeddingGenerator:
-    """Generates embeddings using OpenAI's embedding API"""
+    """Generates embeddings using Google's Gemini embedding API (FREE)"""
 
     def __init__(self, api_key=None, model=EMBEDDING_MODEL):
-        self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
+        genai.configure(api_key=api_key or GEMINI_API_KEY)
         self.model = model
-        self.encoding = tiktoken.get_encoding("cl100k_base")
 
     def generate_embedding(self, text):
         """
@@ -32,42 +30,40 @@ class EmbeddingGenerator:
             List of floats representing the embedding vector
         """
         try:
-            response = self.client.embeddings.create(
-                model=self.model,
-                input=text
+            # Truncate text if too long (Google has ~10k token limit)
+            if len(text) > 25000:
+                text = text[:25000]
+
+            result = genai.embed_content(
+                model=f"models/{self.model}",
+                content=text,
+                task_type="retrieval_document"
             )
-            return response.data[0].embedding
+            return result['embedding']
         except Exception as e:
             print(f"Error generating embedding: {e}")
             return None
 
-    def chunk_long_text(self, text, max_tokens=8000):
+    def generate_query_embedding(self, text):
         """
-        Split long text into chunks that fit within token limits
+        Generate embedding vector for a query (uses retrieval_query task type)
 
         Args:
-            text: Text to chunk
-            max_tokens: Maximum tokens per chunk
+            text: Query text to embed
 
         Returns:
-            List of text chunks
+            List of floats representing the embedding vector
         """
-        tokens = self.encoding.encode(text)
-
-        if len(tokens) <= max_tokens:
-            return [text]
-
-        chunks = []
-        for i in range(0, len(tokens), max_tokens):
-            chunk_tokens = tokens[i:i + max_tokens]
-            chunk_text = self.encoding.decode(chunk_tokens)
-            chunks.append(chunk_text)
-
-        return chunks
-
-    def count_tokens(self, text):
-        """Count tokens in text"""
-        return len(self.encoding.encode(text))
+        try:
+            result = genai.embed_content(
+                model=f"models/{self.model}",
+                content=text,
+                task_type="retrieval_query"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"Error generating query embedding: {e}")
+            return None
 
 
 class VectorStore:
@@ -79,7 +75,7 @@ class VectorStore:
         self.metadata_file = self.index_path / "metadata.json"
         self.doc_ids_file = self.index_path / "doc_ids.json"
 
-        self.dimension = 1536  # text-embedding-3-small
+        self.dimension = 768  # Google text-embedding-004
         self.index = None
         self.metadata = {}  # {internal_id: metadata_dict}
         self.doc_id_to_index = {}  # {doc_id: internal_id}
@@ -421,8 +417,8 @@ class ContextRetriever:
         Returns:
             List of relevant documents with metadata
         """
-        # Generate query embedding
-        query_embedding = self.embedding_gen.generate_embedding(query)
+        # Generate query embedding (use query-specific embedding for better retrieval)
+        query_embedding = self.embedding_gen.generate_query_embedding(query)
 
         if not query_embedding:
             return []
