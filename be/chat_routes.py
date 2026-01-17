@@ -172,3 +172,69 @@ def register_chat_routes(app):
             }), 200
         except Exception as e:
             return jsonify({"status": "unhealthy", "error": str(e)}), 500
+
+    @app.route('/api/chat/debug/chunks', methods=['GET'])
+    def debug_chunks():
+        """
+        Debug endpoint to view all stored RAG chunks
+
+        Query params:
+            ticker (optional): Filter by ticker symbol
+            limit (optional): Max number of results (default 50)
+
+        Response:
+        {
+            "total": 100,
+            "returned": 50,
+            "chunks": [
+                {
+                    "id": 0,
+                    "doc_id": "news:AAPL_news_abc123",
+                    "ticker": "AAPL",
+                    "title": "...",
+                    "source": "...",
+                    "content_preview": "...",
+                    "full_content": "..."
+                },
+                ...
+            ]
+        }
+        """
+        try:
+            ticker_filter = request.args.get('ticker')
+            limit = int(request.args.get('limit', 50))
+
+            vector_store = chat_service.vector_store
+            all_metadata = vector_store.metadata
+
+            chunks = []
+            for internal_id, meta in all_metadata.items():
+                if ticker_filter and meta.get('ticker') != ticker_filter:
+                    continue
+
+                chunks.append({
+                    "id": internal_id,
+                    "doc_id": meta.get('doc_id', ''),
+                    "ticker": meta.get('ticker', ''),
+                    "type": meta.get('type', ''),
+                    "title": meta.get('title', ''),
+                    "url": meta.get('url', ''),
+                    "source": meta.get('source', ''),
+                    "published_date": meta.get('published_date', ''),
+                    "content_preview": meta.get('content_preview', ''),
+                    "full_content": meta.get('full_content', '')
+                })
+
+                if len(chunks) >= limit:
+                    break
+
+            return jsonify({
+                "total": len(all_metadata),
+                "returned": len(chunks),
+                "index_stats": vector_store.get_stats(),
+                "chunks": chunks
+            }), 200
+
+        except Exception as e:
+            print(f"Error in debug_chunks: {e}")
+            return jsonify({"error": str(e)}), 500

@@ -12,7 +12,7 @@ class ChatService:
         self.scraper = ArticleScraper()
         self.embedding_gen = EmbeddingGenerator()
         self.vector_store = VectorStore()
-        self.context_retriever = ContextRetriever()
+        self.context_retriever = ContextRetriever(vector_store=self.vector_store)
         self.llm_client = GeminiClient()
         self.conversation_manager = ConversationManager()
 

@@ -11,8 +11,9 @@ PORT = int(os.getenv('PORT', 5000))
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
 
-# FAISS configuration
-FAISS_INDEX_PATH = os.getenv('FAISS_INDEX_PATH', 'be/faiss_index')
+# FAISS configuration (path relative to this file's location)
+FAISS_INDEX_PATH = os.getenv('FAISS_INDEX_PATH',
+    os.path.join(os.path.dirname(__file__), 'faiss_index'))
 
 # Embedding settings (using Google's free embedding model)
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'text-embedding-004')

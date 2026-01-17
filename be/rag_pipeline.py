@@ -3,6 +3,7 @@ import faiss
 import numpy as np
 import json
 import os
+import traceback
 from pathlib import Path
 from config import (
     GEMINI_API_KEY,
@@ -185,6 +186,7 @@ class VectorStore:
 
         except Exception as e:
             print(f"Error upserting document {doc_id}: {e}")
+            traceback.print_exc()
             return False
 
     def search(self, query_embedding, ticker=None, doc_type=None, top_k=None, namespace="news"):
@@ -400,9 +402,9 @@ class VectorStore:
 class ContextRetriever:
     """High-level interface for retrieving relevant context"""
 
-    def __init__(self):
+    def __init__(self, vector_store=None):
         self.embedding_gen = EmbeddingGenerator()
-        self.vector_store = VectorStore()
+        self.vector_store = vector_store or VectorStore()
 
     def retrieve_context(self, query, ticker, doc_type=None, top_k=None):
         """
