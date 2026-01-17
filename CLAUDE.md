@@ -26,7 +26,7 @@ Project A is a personal stock trading assistant that provides users with compreh
 - **fe/**: Vanilla JavaScript frontend (no frameworks)
   - Single-page application with tab-based navigation
   - Client-side caching system with configurable TTL
-  - Canvas-based chart rendering
+  - Canvas-based chart rendering (line chart + candlestick views)
   - Sliding chat sidebar UI for AI assistant
   - Responsive design with mobile support
 
@@ -65,7 +65,7 @@ Project A is a personal stock trading assistant that provides users with compreh
 1. **Stock Selection**: Searchable dropdown with thousands of tickers from `company_tickers.json`
 2. **Market Status**: Real-time market open/closed indicator
 3. **Dark Mode**: Theme toggle with system preference detection, persisted to localStorage
-4. **Overview Tab**: Key metrics (price, volume, market cap, open, high, low) + price chart
+4. **Overview Tab**: Key metrics (price, volume, market cap, open, high, low) + interactive price chart with Line/Candlestick toggle
 5. **Financials Tab**: Quarterly/annual financial statements (revenue, net income, assets, liabilities)
 6. **Dividends Tab**: Historical dividend payment data with ex-dates and pay dates
 7. **Splits Tab**: Stock split history with ratios and types
@@ -137,7 +137,7 @@ Access cache stats via browser console: `stockCache.getStats()`
 All stock data fetched from Polygon.io API (https://polygon.io/):
 - `/v3/reference/tickers/{ticker}` - Company details
 - `/v2/aggs/ticker/{ticker}/prev` - Previous day close
-- `/v2/aggs/ticker/{ticker}/range/...` - Historical aggregates
+- `/v2/aggs/ticker/{ticker}/range/...` - Historical aggregates (OHLCV data for charts)
 - `/v3/reference/dividends` - Dividend history
 - `/v3/reference/splits` - Stock split history
 - `/v2/reference/news` - News articles (metadata)
@@ -233,6 +233,14 @@ RAG_TOP_K=5
 - **Persistence**: FAISS index saved automatically after batch operations and on graceful shutdown
 - **Error Handling**: Graceful fallback to article descriptions if scraping fails; traceback logging for debugging
 - **Cost Optimization**: Uses 100% free Google Gemini APIs for chat and embeddings, FAISS is free and local, client-side caching reduces API calls
+
+### Price Chart Implementation
+- **Dual View Modes**: Toggle between line chart and candlestick chart (no additional API calls - OHLC data already fetched)
+- **chartState Object**: Centralized state for canvas, data, hover index, animation, and view mode
+- **High DPI Support**: Canvas scales for Retina/4K displays
+- **Interactive Features**: Crosshair tracking, tooltips (OHLC in candle mode), animated drawing
+- **Theme-Aware**: `getChartColors()` returns appropriate colors for light/dark mode
+- **Time Ranges**: 1M, 3M, 6M, 1Y, 5Y with 24-hour caching per range
 
 ### Code Organization Principles
 - Backend modules are fully independent and can be used separately
