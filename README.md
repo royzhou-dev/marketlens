@@ -1,11 +1,11 @@
-# Project A - Stock Trading Assistant
+# MarketLens - Stock Trading Assistant
 
 A personal stock trading assistant that provides real-time market information and AI-powered insights. Users can explore stock data, news, earnings, and performance metrics powered by the Polygon API.
 
 ## Project Structure
 
 ```
-Project A/
+MarketLens/
 ├── be/                          # Python backend
 │   ├── app.py                   # Flask application
 │   ├── config.py                # Configuration management
@@ -41,7 +41,7 @@ Project A/
 Navigate to the project directory and install the required Python packages:
 
 ```bash
-cd "Project A"
+cd "MarketLens"
 pip install -r be/requirements.txt
 ```
 
