@@ -1335,7 +1335,7 @@ function getFrequencyText(frequency) {
 let chatState = {
     conversationId: generateUUID(),
     messages: [],
-    isOpen: false,
+    isOpen: true,  // Default to open for persistent panel
     isLoading: false
 };
 
@@ -1347,16 +1347,22 @@ function generateUUID() {
     });
 }
 
-function toggleChatSidebar() {
-    const sidebar = document.getElementById('chatSidebar');
+function toggleChatPanel() {
+    const appLayout = document.querySelector('.app-layout');
+    const chatPanel = document.getElementById('chatPanel');
     chatState.isOpen = !chatState.isOpen;
 
     if (chatState.isOpen) {
-        sidebar.classList.add('open');
+        appLayout.classList.remove('chat-collapsed');
+        chatPanel.classList.remove('collapsed');
         updateChatContext();
     } else {
-        sidebar.classList.remove('open');
+        appLayout.classList.add('chat-collapsed');
+        chatPanel.classList.add('collapsed');
     }
+
+    // Save preference
+    localStorage.setItem('chatPanelOpen', chatState.isOpen);
 }
 
 function updateChatContext() {
@@ -1549,8 +1555,25 @@ async function scrapeAndEmbedArticles() {
 
 // Setup chat event listeners
 function setupChatListeners() {
-    document.getElementById('toggleChatBtn').addEventListener('click', toggleChatSidebar);
-    document.getElementById('closeChatBtn').addEventListener('click', toggleChatSidebar);
+    // Chat panel collapse button (desktop)
+    const collapseBtn = document.getElementById('chatCollapseBtn');
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', toggleChatPanel);
+    }
+
+    // Mobile chat toggle button
+    const mobileToggle = document.getElementById('mobileChatToggle');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', toggleMobileChat);
+    }
+
+    // Mobile chat close button
+    const mobileClose = document.getElementById('closeMobileChat');
+    if (mobileClose) {
+        mobileClose.addEventListener('click', toggleMobileChat);
+    }
+
+    // Send button and input
     document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
 
     document.getElementById('chatInput').addEventListener('keydown', (e) => {
@@ -1560,11 +1583,42 @@ function setupChatListeners() {
         }
     });
 
+    // Initialize chat panel state from localStorage
+    initChatPanelState();
+
     // Setup sentiment listeners
     setupSentimentListeners();
 
     // Setup forecast listeners
     setupForecastListeners();
+}
+
+// Toggle chat for mobile (full screen overlay)
+function toggleMobileChat() {
+    const chatPanel = document.getElementById('chatPanel');
+    const isOpen = chatPanel.classList.contains('open');
+
+    if (isOpen) {
+        chatPanel.classList.remove('open');
+    } else {
+        chatPanel.classList.add('open');
+        updateChatContext();
+    }
+}
+
+// Initialize chat panel open/collapsed state
+function initChatPanelState() {
+    const savedState = localStorage.getItem('chatPanelOpen');
+    // Default to open if not set
+    chatState.isOpen = savedState === null ? true : savedState === 'true';
+
+    const appLayout = document.querySelector('.app-layout');
+    const chatPanel = document.getElementById('chatPanel');
+
+    if (!chatState.isOpen) {
+        appLayout.classList.add('chat-collapsed');
+        chatPanel.classList.add('collapsed');
+    }
 }
 
 // ============================================
