@@ -109,13 +109,13 @@ app.register_blueprint(sentiment_bp)
 app.register_blueprint(forecast_bp)
 
 # Graceful shutdown handler for FAISS
-from chat_routes import chat_service
+from chat_routes import agent_service
 
 def shutdown_handler():
     """Save FAISS index on graceful shutdown"""
     print("Shutting down gracefully, saving FAISS index...")
     try:
-        chat_service.vector_store.save()
+        agent_service.vector_store.save()
         print("FAISS index saved successfully")
     except Exception as e:
         print(f"Error saving FAISS index on shutdown: {e}")

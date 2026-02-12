@@ -1,4 +1,5 @@
-import google.generativeai as genai
+from google import genai as genai_client
+from google.genai import types as genai_types
 import faiss
 import numpy as np
 import json
@@ -17,8 +18,8 @@ class EmbeddingGenerator:
     """Generates embeddings using Google's Gemini embedding API (FREE)"""
 
     def __init__(self, api_key=None, model=EMBEDDING_MODEL):
-        genai.configure(api_key=api_key or GEMINI_API_KEY)
-        self.model = model
+        self.client = genai_client.Client(api_key=api_key or GEMINI_API_KEY)
+        self.model = f"models/{model}"
 
     def generate_embedding(self, text):
         """
@@ -31,16 +32,15 @@ class EmbeddingGenerator:
             List of floats representing the embedding vector
         """
         try:
-            # Truncate text if too long (Google has ~10k token limit)
             if len(text) > 25000:
                 text = text[:25000]
 
-            result = genai.embed_content(
-                model=f"models/{self.model}",
-                content=text,
-                task_type="retrieval_document"
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=text,
+                config=genai_types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
             )
-            return result['embedding']
+            return result.embeddings[0].values
         except Exception as e:
             print(f"Error generating embedding: {e}")
             return None
@@ -56,12 +56,12 @@ class EmbeddingGenerator:
             List of floats representing the embedding vector
         """
         try:
-            result = genai.embed_content(
-                model=f"models/{self.model}",
-                content=text,
-                task_type="retrieval_query"
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=text,
+                config=genai_types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
             )
-            return result['embedding']
+            return result.embeddings[0].values
         except Exception as e:
             print(f"Error generating query embedding: {e}")
             return None

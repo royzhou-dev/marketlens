@@ -1,4 +1,6 @@
 import google.generativeai as genai
+from google.genai import types as genai_types
+from google import genai as genai_new
 from datetime import datetime, timedelta
 from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_CONTEXT_LENGTH
 
@@ -179,3 +181,87 @@ class ConversationManager:
 
         for conv_id in to_delete:
             del self.conversations[conv_id]
+
+
+class AgentLLMClient:
+    """Gemini client with function calling support using google-genai SDK."""
+
+    SYSTEM_PROMPT = """You are an expert stock market analyst assistant for MarketLens.
+You have access to tools that provide real-time stock data, financial statements,
+news, sentiment analysis, and price forecasts.
+
+When answering questions:
+- Use your tools to fetch relevant data before answering. Do not guess prices or financial figures.
+- You may call multiple tools if the question requires different types of data.
+- Be concise and data-driven. Cite specific numbers from tool results.
+- Format numbers with proper units (e.g., $1.5B, 10.5M shares).
+- If a tool returns an error, acknowledge the issue and work with whatever data you have.
+- Do not include markdown formatting syntax. Write in plain text.
+- The user is currently viewing the stock ticker: {ticker}. Use this ticker for tool calls unless the user explicitly asks about a different stock.
+- For general questions that do not require data (e.g., "what is a P/E ratio?"), respond directly without calling tools."""
+
+    def __init__(self, api_key=None, model=None):
+        self.client = genai_new.Client(api_key=api_key or GEMINI_API_KEY)
+        self.model_name = model or GEMINI_MODEL
+
+    def build_config(self, tools, ticker):
+        """Build GenerateContentConfig with tools and system prompt."""
+        from agent_tools import TOOL_DECLARATIONS
+
+        function_declarations = [
+            genai_types.FunctionDeclaration(
+                name=t["name"],
+                description=t["description"],
+                parameters_json_schema=t["parameters"],
+            )
+            for t in tools
+        ]
+
+        return genai_types.GenerateContentConfig(
+            system_instruction=self.SYSTEM_PROMPT.format(ticker=ticker),
+            tools=[genai_types.Tool(function_declarations=function_declarations)],
+            automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(disable=True),
+        )
+
+    def generate(self, contents, config):
+        """Send contents to Gemini and return the full response."""
+        return self.client.models.generate_content(
+            model=self.model_name,
+            contents=contents,
+            config=config,
+        )
+
+    @staticmethod
+    def make_user_content(text):
+        """Create a user Content message."""
+        return genai_types.Content(role="user", parts=[genai_types.Part(text=text)])
+
+    @staticmethod
+    def make_tool_response(name, result):
+        """Create a tool response Content message."""
+        return genai_types.Content(
+            role="tool",
+            parts=[genai_types.Part.from_function_response(name=name, response={"result": result})],
+        )
+
+    @staticmethod
+    def history_to_contents(history):
+        """Convert ConversationManager history to genai Contents list."""
+        contents = []
+        for msg in history:
+            role = "user" if msg["role"] == "user" else "model"
+            contents.append(
+                genai_types.Content(role=role, parts=[genai_types.Part(text=msg["content"])])
+            )
+        return contents
+
+    @staticmethod
+    def extract_parts(response):
+        """Extract function_call parts and text from a response."""
+        candidate = response.candidates[0]
+        parts = candidate.content.parts
+
+        function_calls = [p for p in parts if p.function_call]
+        text_parts = [p.text for p in parts if p.text]
+
+        return function_calls, text_parts, candidate.content

@@ -1,9 +1,18 @@
 from flask import request, jsonify, Response, stream_with_context
-from chat_service import ChatService
+from agent_service import AgentService
 import json
 
-# Initialize chat service
-chat_service = ChatService()
+# Initialize agent service
+agent_service = AgentService()
+
+
+def format_sse(event_type, data):
+    """Format a Server-Sent Event."""
+    if isinstance(data, dict):
+        data_str = json.dumps(data)
+    else:
+        data_str = str(data)
+    return f"event: {event_type}\ndata: {data_str}\n\n"
 
 
 def register_chat_routes(app):
@@ -12,7 +21,7 @@ def register_chat_routes(app):
     @app.route('/api/chat/message', methods=['POST'])
     def chat_message():
         """
-        Main chat endpoint - processes user messages and streams responses
+        Main chat endpoint - processes user messages via agent and streams responses
 
         Request body:
         {
@@ -27,7 +36,11 @@ def register_chat_routes(app):
             "conversation_id": "uuid"
         }
 
-        Response: Server-Sent Events stream
+        Response: Server-Sent Events stream with typed events:
+          event: tool_call  - Agent is calling a tool
+          event: text       - Response text chunk
+          event: done       - Stream complete
+          event: error      - Error occurred
         """
         try:
             data = request.get_json()
@@ -41,18 +54,18 @@ def register_chat_routes(app):
                 return jsonify({"error": "Missing required fields"}), 400
 
             def generate():
-                """Generator for streaming response"""
+                """Generator for structured SSE streaming."""
                 try:
-                    for chunk in chat_service.process_message(
+                    for event_type, event_data in agent_service.process_message(
                         ticker=ticker,
                         message=message,
                         frontend_context=context,
                         conversation_id=conversation_id
                     ):
-                        yield chunk
+                        yield format_sse(event_type, event_data)
                 except Exception as e:
                     print(f"Error in stream: {e}")
-                    yield "I encountered an error. Please try again."
+                    yield format_sse("error", {"message": str(e)})
 
             return Response(
                 stream_with_context(generate()),
@@ -75,16 +88,7 @@ def register_chat_routes(app):
         Request body:
         {
             "ticker": "AAPL",
-            "articles": [
-                {
-                    "article_url": "https://...",
-                    "title": "...",
-                    "description": "...",
-                    "published_utc": "...",
-                    "publisher": {"name": "..."}
-                },
-                ...
-            ]
+            "articles": [...]
         }
 
         Response:
@@ -113,8 +117,7 @@ def register_chat_routes(app):
                     "message": "No articles provided"
                 }), 200
 
-            # Process articles
-            results = chat_service.scrape_and_embed_articles(ticker, articles)
+            results = agent_service.scrape_and_embed_articles(ticker, articles)
 
             return jsonify(results), 200
 
@@ -124,23 +127,10 @@ def register_chat_routes(app):
 
     @app.route('/api/chat/conversations/<conversation_id>', methods=['GET'])
     def get_conversation(conversation_id):
-        """
-        Get conversation history
-
-        Response:
-        {
-            "messages": [
-                {"role": "user", "content": "..."},
-                {"role": "assistant", "content": "..."},
-                ...
-            ]
-        }
-        """
+        """Get conversation history"""
         try:
-            history = chat_service.conversation_manager.get_history(conversation_id)
-
+            history = agent_service.conversation_manager.get_history(conversation_id)
             return jsonify({"messages": history}), 200
-
         except Exception as e:
             print(f"Error in get_conversation: {e}")
             return jsonify({"error": str(e)}), 500
@@ -149,10 +139,8 @@ def register_chat_routes(app):
     def clear_conversation(conversation_id):
         """Clear conversation history"""
         try:
-            chat_service.conversation_manager.clear_conversation(conversation_id)
-
+            agent_service.conversation_manager.clear_conversation(conversation_id)
             return jsonify({"success": True}), 200
-
         except Exception as e:
             print(f"Error in clear_conversation: {e}")
             return jsonify({"error": str(e)}), 500
@@ -164,7 +152,7 @@ def register_chat_routes(app):
             return jsonify({
                 "status": "healthy",
                 "components": {
-                    "scraper": "ok",
+                    "agent": "ok",
                     "embeddings": "ok",
                     "vector_store": "ok",
                     "llm": "ok"
@@ -175,36 +163,12 @@ def register_chat_routes(app):
 
     @app.route('/api/chat/debug/chunks', methods=['GET'])
     def debug_chunks():
-        """
-        Debug endpoint to view all stored RAG chunks
-
-        Query params:
-            ticker (optional): Filter by ticker symbol
-            limit (optional): Max number of results (default 50)
-
-        Response:
-        {
-            "total": 100,
-            "returned": 50,
-            "chunks": [
-                {
-                    "id": 0,
-                    "doc_id": "news:AAPL_news_abc123",
-                    "ticker": "AAPL",
-                    "title": "...",
-                    "source": "...",
-                    "content_preview": "...",
-                    "full_content": "..."
-                },
-                ...
-            ]
-        }
-        """
+        """Debug endpoint to view all stored RAG chunks"""
         try:
             ticker_filter = request.args.get('ticker')
             limit = int(request.args.get('limit', 50))
 
-            vector_store = chat_service.vector_store
+            vector_store = agent_service.vector_store
             all_metadata = vector_store.metadata
 
             chunks = []

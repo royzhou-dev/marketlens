@@ -4,7 +4,7 @@ requests==2.31.0
 python-dotenv==1.0.0
 
 # Chatbot (using Google Gemini - FREE)
-google-generativeai==0.8.3
+google-genai>=1.0.0
 faiss-cpu==1.7.4
 numpy==1.24.3
 beautifulsoup4==4.12.3

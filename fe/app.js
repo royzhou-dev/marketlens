@@ -1377,6 +1377,69 @@ function updateChatContext() {
     }
 }
 
+// Tool display names for status indicators
+const TOOL_DISPLAY_NAMES = {
+    'get_stock_quote': 'Fetching stock price',
+    'get_company_info': 'Looking up company info',
+    'get_financials': 'Retrieving financial data',
+    'get_news': 'Searching news articles',
+    'search_knowledge_base': 'Searching knowledge base',
+    'analyze_sentiment': 'Analyzing social sentiment',
+    'get_price_forecast': 'Generating price forecast',
+    'get_dividends': 'Fetching dividend history',
+    'get_stock_splits': 'Checking split history',
+    'get_price_history': 'Loading price history'
+};
+
+function parseSSEBuffer(buffer) {
+    const parsed = [];
+    const lines = buffer.split('\n');
+    let currentEvent = { type: null, data: null };
+    let remaining = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (line.startsWith('event: ')) {
+            currentEvent.type = line.substring(7).trim();
+        } else if (line.startsWith('data: ')) {
+            currentEvent.data = line.substring(6);
+        } else if (line === '' && currentEvent.type !== null) {
+            let data = currentEvent.data;
+            if (currentEvent.type !== 'text') {
+                try { data = JSON.parse(data); } catch (e) {}
+            }
+            parsed.push({ type: currentEvent.type, data: data });
+            currentEvent = { type: null, data: null };
+        }
+    }
+
+    // Keep incomplete event in buffer
+    if (currentEvent.type !== null || currentEvent.data !== null) {
+        remaining = '';
+        if (currentEvent.type) remaining += `event: ${currentEvent.type}\n`;
+        if (currentEvent.data !== null) remaining += `data: ${currentEvent.data}\n`;
+    }
+
+    return { parsed, remaining };
+}
+
+function renderToolStatuses(elementId, statuses) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    let html = '';
+    for (const status of statuses) {
+        const icon = status.status === 'complete' ? '&#10003;' :
+                     status.status === 'error' ? '&#10007;' :
+                     '<span class="tool-spinner"></span>';
+        const className = `tool-status-item ${status.status}`;
+        html += `<div class="${className}">${icon} ${escapeHtml(status.displayName)}</div>`;
+    }
+    el.innerHTML = html;
+    el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
@@ -1399,7 +1462,7 @@ async function sendChatMessage() {
     // Show loading indicator
     const loadingId = addMessageToChat('loading', '');
 
-    // Collect current stock context from cache
+    // Collect current stock context from cache (for agent's hybrid caching)
     const context = {
         overview: {
             details: cache.get(`details_${currentTicker}`),
@@ -1413,7 +1476,6 @@ async function sendChatMessage() {
     };
 
     try {
-        // Call chat API with streaming
         const response = await fetch(`${API_BASE}/chat/message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1432,19 +1494,58 @@ async function sendChatMessage() {
         // Remove loading indicator
         removeMessage(loadingId);
 
-        // Handle streaming response
+        // Create tool status container and assistant message container
+        const toolStatusId = addMessageToChat('tool-status', '');
+        let toolStatuses = [];
+        const messageId = addMessageToChat('assistant', '');
+        let assistantMessage = '';
+
+        // Parse structured SSE events
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let assistantMessage = '';
-        const messageId = addMessageToChat('assistant', '');
+        let buffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            assistantMessage += chunk;
-            updateMessage(messageId, assistantMessage);
+            buffer += decoder.decode(value, { stream: true });
+            const result = parseSSEBuffer(buffer);
+            buffer = result.remaining;
+
+            for (const event of result.parsed) {
+                if (event.type === 'tool_call') {
+                    const displayName = TOOL_DISPLAY_NAMES[event.data.tool] || event.data.tool;
+
+                    if (event.data.status === 'calling') {
+                        toolStatuses.push({ tool: event.data.tool, displayName, status: 'calling' });
+                    } else {
+                        const existing = toolStatuses.find(t => t.tool === event.data.tool);
+                        if (existing) existing.status = event.data.status;
+                    }
+                    renderToolStatuses(toolStatusId, toolStatuses);
+
+                } else if (event.type === 'text') {
+                    assistantMessage += event.data;
+                    updateMessage(messageId, assistantMessage);
+
+                } else if (event.type === 'done') {
+                    // Fade out tool statuses
+                    const toolEl = document.getElementById(toolStatusId);
+                    if (toolEl && toolStatuses.length > 0) {
+                        toolEl.classList.add('tool-status-complete');
+                    }
+
+                } else if (event.type === 'error') {
+                    removeMessage(messageId);
+                    addMessageToChat('error', event.data.message || 'An error occurred');
+                }
+            }
+        }
+
+        // Remove tool status container if no tools were called
+        if (toolStatuses.length === 0) {
+            removeMessage(toolStatusId);
         }
 
         // Save to chat state
@@ -1458,7 +1559,6 @@ async function sendChatMessage() {
         removeMessage(loadingId);
         addMessageToChat('error', 'Failed to get response. Please try again.');
     } finally {
-        // Re-enable input
         input.disabled = false;
         document.getElementById('sendChatBtn').disabled = false;
         input.focus();

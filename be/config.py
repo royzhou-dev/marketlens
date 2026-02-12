@@ -31,3 +31,6 @@ REDDIT_USER_AGENT = os.getenv('REDDIT_USER_AGENT', 'StockAssistant/1.0')
 
 # Twitter API (optional - requires paid tier $100+/month)
 TWITTER_BEARER_TOKEN = os.getenv('TWITTER_BEARER_TOKEN', '')
+
+# Agent configuration
+AGENT_MAX_ITERATIONS = int(os.getenv('AGENT_MAX_ITERATIONS', 5))
