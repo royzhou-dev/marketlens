@@ -108,3 +108,8 @@ TWITTER_BEARER_TOKEN= # Optional, paid ($100+/month)
 5. Tool responses use `role="tool"` in Gemini API (not "user")
 6. Embeddings use `result.embeddings[0].values` with new google-genai SDK
 7. `chat_service.py` is legacy — all new chat work goes through `agent_service.py`
+
+
+## TODO:
+1. Sentiment and Forecast tab behavior should be closer. Sentiment analysis is automatically run, but with Forecast, button needs to be clicked to start processing.
+2. Error interacting with agent: Agent error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Please ensure that the number of function response parts is equal to the number of function call parts of the function call turn.', 'status': 'INVALID_ARGUMENT'}}

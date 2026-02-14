@@ -76,7 +76,7 @@ class VectorStore:
         self.metadata_file = self.index_path / "metadata.json"
         self.doc_ids_file = self.index_path / "doc_ids.json"
 
-        self.dimension = 768  # Google text-embedding-004
+        self.dimension = 3072  # Google gemini-embedding-001
         self.index = None
         self.metadata = {}  # {internal_id: metadata_dict}
         self.doc_id_to_index = {}  # {doc_id: internal_id}
@@ -95,6 +95,11 @@ class VectorStore:
                 try:
                     # Load existing index
                     self.index = faiss.read_index(str(self.index_file))
+
+                    # Check dimension matches expected
+                    if self.index.d != self.dimension:
+                        print(f"Warning: Index dimension {self.index.d} != expected {self.dimension}, rebuilding index")
+                        raise ValueError("Dimension mismatch")
 
                     # Load metadata
                     if self.metadata_file.exists():

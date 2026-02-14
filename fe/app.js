@@ -1347,24 +1347,6 @@ function generateUUID() {
     });
 }
 
-function toggleChatPanel() {
-    const appLayout = document.querySelector('.app-layout');
-    const chatPanel = document.getElementById('chatPanel');
-    chatState.isOpen = !chatState.isOpen;
-
-    if (chatState.isOpen) {
-        appLayout.classList.remove('chat-collapsed');
-        chatPanel.classList.remove('collapsed');
-        updateChatContext();
-    } else {
-        appLayout.classList.add('chat-collapsed');
-        chatPanel.classList.add('collapsed');
-    }
-
-    // Save preference
-    localStorage.setItem('chatPanelOpen', chatState.isOpen);
-}
-
 function updateChatContext() {
     const contextEl = document.getElementById('chatCurrentTicker');
 
@@ -1655,12 +1637,6 @@ async function scrapeAndEmbedArticles() {
 
 // Setup chat event listeners
 function setupChatListeners() {
-    // Chat panel collapse button (desktop)
-    const collapseBtn = document.getElementById('chatCollapseBtn');
-    if (collapseBtn) {
-        collapseBtn.addEventListener('click', toggleChatPanel);
-    }
-
     // Mobile chat toggle button
     const mobileToggle = document.getElementById('mobileChatToggle');
     if (mobileToggle) {
@@ -1683,9 +1659,6 @@ function setupChatListeners() {
         }
     });
 
-    // Initialize chat panel state from localStorage
-    initChatPanelState();
-
     // Setup sentiment listeners
     setupSentimentListeners();
 
@@ -1703,21 +1676,6 @@ function toggleMobileChat() {
     } else {
         chatPanel.classList.add('open');
         updateChatContext();
-    }
-}
-
-// Initialize chat panel open/collapsed state
-function initChatPanelState() {
-    const savedState = localStorage.getItem('chatPanelOpen');
-    // Default to open if not set
-    chatState.isOpen = savedState === null ? true : savedState === 'true';
-
-    const appLayout = document.querySelector('.app-layout');
-    const chatPanel = document.getElementById('chatPanel');
-
-    if (!chatState.isOpen) {
-        appLayout.classList.add('chat-collapsed');
-        chatPanel.classList.add('collapsed');
     }
 }
 

@@ -16,7 +16,7 @@ FAISS_INDEX_PATH = os.getenv('FAISS_INDEX_PATH',
     os.path.join(os.path.dirname(__file__), 'faiss_index'))
 
 # Embedding settings (using Google's free embedding model)
-EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'text-embedding-004')
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'gemini-embedding-001')
 MAX_CONTEXT_LENGTH = int(os.getenv('MAX_CONTEXT_LENGTH', 8000))
 RAG_TOP_K = int(os.getenv('RAG_TOP_K', 5))
 
