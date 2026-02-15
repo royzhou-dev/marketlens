@@ -72,7 +72,12 @@
                                     <button class="chart-view-btn" data-view="candle">Candle</button>
                                 </div>
                             </div>
-                            <canvas id="priceChart"></canvas>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="priceChart"></canvas>
+                                <div id="chartLoading" class="chart-loading hidden">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="metrics-grid">
                             <div class="metric-card">

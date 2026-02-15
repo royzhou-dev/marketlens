@@ -392,7 +392,9 @@ function switchTab(tabName) {
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
 
-    if (tabName === 'financials' && currentTicker) {
+    if (tabName === 'overview' && currentTicker) {
+        loadChartData(currentTicker, document.querySelector('.chart-range-btn.active').dataset.range || '1M');
+    } else if (tabName === 'financials' && currentTicker) {
         loadFinancials(currentTicker);
     } else if (tabName === 'news' && currentTicker) {
         loadNews(currentTicker);
@@ -407,19 +409,35 @@ function switchTab(tabName) {
     }
 }
 
+function clearStockDisplay() {
+    document.getElementById('stockTitle').textContent = '';
+    document.getElementById('stockPrice').textContent = '';
+    document.getElementById('stockPrice').className = 'stock-price';
+    document.getElementById('companyDesc').textContent = '';
+    document.getElementById('marketCap').textContent = '--';
+    document.getElementById('openPrice').textContent = '--';
+    document.getElementById('highPrice').textContent = '--';
+    document.getElementById('lowPrice').textContent = '--';
+    document.getElementById('volume').textContent = '--';
+    document.getElementById('peRatio').textContent = '--';
+}
+
 async function loadStockData(ticker) {
     currentTicker = ticker;
     document.getElementById('stockData').classList.remove('hidden');
-    showLoading(true);
+    clearStockDisplay();
 
     try {
-        await Promise.all([
-            loadTickerDetails(ticker),
-            loadPreviousClose(ticker),
-            loadChartData(ticker, '1M')
-        ]);
-
         const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+        const loadPromises = [
+            loadTickerDetails(ticker),
+            loadPreviousClose(ticker)
+        ];
+        if (activeTab === 'overview') {
+            loadPromises.push(loadChartData(ticker, '1M'));
+        }
+        await Promise.all(loadPromises);
+
         if (activeTab === 'financials') {
             await loadFinancials(ticker);
         } else if (activeTab === 'news') {
@@ -439,8 +457,6 @@ async function loadStockData(ticker) {
     } catch (error) {
         console.error('Error loading stock data:', error);
         alert('Error loading stock data. Please check your API key and try again.');
-    } finally {
-        showLoading(false);
     }
 }
 
@@ -458,10 +474,10 @@ async function loadTickerDetails(ticker) {
         const response = await fetch(`${API_BASE}/ticker/${ticker}/details`);
         const data = await response.json();
 
-        // Store in cache
-        cache.set(cacheKey, data, CACHE_TTL.STATIC);
-
-        renderTickerDetails(data);
+        if (data.results) {
+            cache.set(cacheKey, data, CACHE_TTL.STATIC);
+            renderTickerDetails(data);
+        }
     } catch (error) {
         console.error('Error loading ticker details:', error);
     }
@@ -516,10 +532,10 @@ async function loadPreviousClose(ticker) {
         const response = await fetch(`${API_BASE}/ticker/${ticker}/previous-close`);
         const data = await response.json();
 
-        // Store in cache
-        cache.set(cacheKey, data, CACHE_TTL.DAILY);
-
-        renderPreviousClose(data);
+        if (data.results && data.results.length > 0) {
+            cache.set(cacheKey, data, CACHE_TTL.DAILY);
+            renderPreviousClose(data);
+        }
     } catch (error) {
         console.error('Error loading previous close:', error);
     }
@@ -554,6 +570,7 @@ function renderPreviousClose(data) {
 
 async function loadChartData(ticker, range) {
     const cacheKey = `chart_${ticker}_${range}`;
+    const chartLoading = document.getElementById('chartLoading');
 
     // Check cache first
     if (cache.has(cacheKey)) {
@@ -564,6 +581,7 @@ async function loadChartData(ticker, range) {
         return;
     }
 
+    chartLoading.classList.remove('hidden');
     const { from, to } = getDateRange(range);
 
     try {
@@ -572,14 +590,14 @@ async function loadChartData(ticker, range) {
         );
         const data = await response.json();
 
-        // Store in cache
-        cache.set(cacheKey, data, CACHE_TTL.DAILY);
-
         if (data.results) {
+            cache.set(cacheKey, data, CACHE_TTL.DAILY);
             renderChart(data.results);
         }
     } catch (error) {
         console.error('Error loading chart data:', error);
+    } finally {
+        chartLoading.classList.add('hidden');
     }
 }
 
