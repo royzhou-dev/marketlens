@@ -6,6 +6,7 @@ Uses Gemini function calling to dynamically fetch data through tools.
 import json
 import logging
 
+from google.genai import types as genai_types
 from llm_client import AgentLLMClient, ConversationManager
 from agent_tools import TOOL_DECLARATIONS, ToolExecutor
 from rag_pipeline import VectorStore, ContextRetriever
@@ -117,15 +118,16 @@ class AgentService:
                             "status": "complete",
                         })
 
-                    # Build function response for Gemini
+                    # Build function response Part for Gemini
                     tool_response_parts.append(
-                        self.llm_client.make_tool_response(tool_name, result)
+                        genai_types.Part.from_function_response(
+                            name=tool_name, response={"result": result}
+                        )
                     )
 
-                # Add all tool responses to contents
-                # Gemini expects tool responses as separate Content entries with role="tool"
-                for tr in tool_response_parts:
-                    contents.append(tr)
+                # Add all tool responses as a single Content with multiple Parts
+                # Gemini requires all function responses for a turn in one Content object
+                contents.append(genai_types.Content(role="tool", parts=tool_response_parts))
 
             # Hit max iterations — provide a fallback
             yield ("text", "I gathered some information but reached the maximum number of analysis steps. Please try a more specific question.")
