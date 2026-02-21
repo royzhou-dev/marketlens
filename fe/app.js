@@ -205,11 +205,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Theme toggle functionality
 function initTheme() {
     const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    if (savedTheme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    } else if (prefersDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
     }
-    // No attribute = dark (default via :root)
 
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
@@ -218,8 +220,8 @@ function initTheme() {
 }
 
 function toggleTheme() {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const newTheme = isLight ? 'dark' : 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
@@ -640,20 +642,20 @@ let chartState = {
 };
 
 function getChartColors() {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-        line: '#38a8c4',
-        lineLight: isLight ? '#2892ae' : '#5ec4db',
-        gradientTop: isLight ? 'rgba(40, 146, 174, 0.12)' : 'rgba(56, 168, 196, 0.2)',
-        gradientBottom: 'rgba(56, 168, 196, 0)',
-        grid: isLight ? 'rgba(189, 208, 226, 0.6)' : 'rgba(45, 63, 85, 0.8)',
-        text: isLight ? '#5a7a96' : '#5a7186',
-        textStrong: isLight ? '#2d4f6b' : '#8fa3be',
-        crosshair: isLight ? 'rgba(45, 79, 107, 0.3)' : 'rgba(139, 163, 190, 0.4)',
-        tooltipBg: isLight ? '#ffffff' : '#1c2333',
-        tooltipBorder: isLight ? '#bdd0e2' : '#2d3f55',
+        line: isDark ? '#818cf8' : '#4f46e5',
+        lineLight: isDark ? '#a5b4fc' : '#6366f1',
+        gradientTop: isDark ? 'rgba(129, 140, 248, 0.3)' : 'rgba(79, 70, 229, 0.15)',
+        gradientBottom: isDark ? 'rgba(129, 140, 248, 0)' : 'rgba(79, 70, 229, 0)',
+        grid: isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.3)',
+        text: isDark ? '#94a3b8' : '#64748b',
+        textStrong: isDark ? '#cbd5e1' : '#475569',
+        crosshair: isDark ? 'rgba(148, 163, 184, 0.5)' : 'rgba(100, 116, 139, 0.4)',
+        tooltipBg: isDark ? '#1e293b' : '#ffffff',
+        tooltipBorder: isDark ? '#334155' : '#e2e8f0',
         positive: '#10b981',
-        negative: '#f43f5e'
+        negative: '#ef4444'
     };
 }
 
@@ -2232,7 +2234,7 @@ function drawForecastChart(data, skipSetup = false) {
     // Draw confidence band (shaded area)
     if (upperBound.length > 0 && lowerBound.length > 0) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
 
         // Start from first forecast point
         const startIdx = historical.length;
