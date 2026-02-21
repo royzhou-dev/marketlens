@@ -1,36 +1,36 @@
 /* ============================================
    MarketLens - Design System
-   Direction: Data-dense, professional, terminal-inspired
-   Base unit: 16px | Depth: Subtle shadows
+   Direction: Modern trading platform, dark-primary
+   Base unit: 16px | Depth: Borders-only, accent glow on focus
    ============================================ */
 
-/* CSS Custom Properties */
+/* CSS Custom Properties — Dark (default) */
 :root {
-    /* Neutrals - Slate palette */
-    --color-bg: #f8fafc;
-    --color-bg-elevated: #ffffff;
-    --color-bg-subtle: #f1f5f9;
-    --color-bg-muted: #e2e8f0;
+    /* Dark palette */
+    --color-bg: #0f1117;
+    --color-bg-elevated: #161b27;
+    --color-bg-subtle: #1c2333;
+    --color-bg-muted: #253347;
 
-    --color-border: #e2e8f0;
-    --color-border-subtle: #f1f5f9;
+    --color-border: #2d3f55;
+    --color-border-subtle: #1e2a3a;
 
-    --color-text: #0f172a;
-    --color-text-secondary: #475569;
-    --color-text-muted: #94a3b8;
+    --color-text: #e8edf4;
+    --color-text-secondary: #8fa3be;
+    --color-text-muted: #5a7186;
 
-    /* Accent - Indigo */
-    --color-accent: #4f46e5;
-    --color-accent-hover: #4338ca;
-    --color-accent-subtle: #eef2ff;
+    /* Accent - Steel teal */
+    --color-accent: #38a8c4;
+    --color-accent-hover: #2892ae;
+    --color-accent-subtle: rgba(56, 168, 196, 0.12);
 
     /* Semantic */
-    --color-positive: #059669;
-    --color-positive-bg: #ecfdf5;
-    --color-negative: #dc2626;
-    --color-negative-bg: #fef2f2;
-    --color-neutral-sentiment: #94a3b8;
-    --color-neutral-sentiment-bg: rgba(148, 163, 184, 0.15);
+    --color-positive: #10b981;
+    --color-positive-bg: rgba(16, 185, 129, 0.08);
+    --color-negative: #f43f5e;
+    --color-negative-bg: rgba(244, 63, 94, 0.08);
+    --color-neutral-sentiment: #64748b;
+    --color-neutral-sentiment-bg: rgba(100, 116, 139, 0.15);
 
     /* Spacing */
     --space-1: 4px;
@@ -60,48 +60,41 @@
     --line-height-dense: 1.3;
     --line-height-tight: 1.15;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06);
-    --shadow-lg: 0 4px 16px rgba(15, 23, 42, 0.08);
-
-    /* Radius */
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 12px;
+    /* Radius — sharper for technical feel */
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
 
     /* Layout */
     --header-height: 60px;
     --chat-width: 340px;
 }
 
-/* Dark Mode */
-[data-theme="dark"] {
-    --color-bg: #0f172a;
-    --color-bg-elevated: #1e293b;
-    --color-bg-subtle: #1e293b;
-    --color-bg-muted: #334155;
+/* Light Mode override */
+[data-theme="light"] {
+    --color-bg: #f0f4f8;
+    --color-bg-elevated: #ffffff;
+    --color-bg-subtle: #e4edf5;
+    --color-bg-muted: #d0dce9;
 
-    --color-border: #334155;
-    --color-border-subtle: #1e293b;
+    --color-border: #bdd0e2;
+    --color-border-subtle: #d8e8f4;
 
-    --color-text: #f1f5f9;
-    --color-text-secondary: #cbd5e1;
-    --color-text-muted: #64748b;
+    --color-text: #0d1e30;
+    --color-text-secondary: #2d4f6b;
+    --color-text-muted: #5a7a96;
 
-    --color-accent: #818cf8;
-    --color-accent-hover: #a5b4fc;
-    --color-accent-subtle: rgba(129, 140, 248, 0.15);
+    --color-accent: #0891b2;
+    --color-accent-hover: #0e7490;
+    --color-accent-subtle: #ecfeff;
 
-    --color-positive: #34d399;
-    --color-positive-bg: rgba(52, 211, 153, 0.15);
-    --color-negative: #f87171;
-    --color-negative-bg: rgba(248, 113, 113, 0.15);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.25);
-    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --color-positive: #059669;
+    --color-positive-bg: rgba(5, 150, 105, 0.08);
+    --color-negative: #e11d48;
+    --color-negative-bg: rgba(225, 29, 72, 0.08);
+    --color-neutral-sentiment: #64748b;
+    --color-neutral-sentiment-bg: rgba(100, 116, 139, 0.12);
 }
 
 /* Reset & Base */
@@ -137,7 +130,6 @@ body {
     padding: 0 var(--space-5);
     display: flex;
     align-items: center;
-    box-shadow: var(--shadow-sm);
     position: relative;
     z-index: 100;
 }
@@ -154,7 +146,7 @@ body {
 .global-header h1 {
     font-size: var(--text-lg);
     font-weight: 700;
-    color: var(--color-text);
+    color: var(--color-accent);
     letter-spacing: -0.03em;
 }
 
@@ -226,19 +218,19 @@ body {
 }
 
 .theme-toggle .icon-moon {
-    display: block;
+    display: none;
 }
 
 .theme-toggle .icon-sun {
-    display: none;
-}
-
-[data-theme="dark"] .theme-toggle .icon-moon {
-    display: none;
-}
-
-[data-theme="dark"] .theme-toggle .icon-sun {
     display: block;
+}
+
+[data-theme="light"] .theme-toggle .icon-moon {
+    display: block;
+}
+
+[data-theme="light"] .theme-toggle .icon-sun {
+    display: none;
 }
 
 /* App Layout Grid */
@@ -374,7 +366,7 @@ body {
 .message.user {
     align-self: flex-end;
     background: var(--color-accent);
-    color: white;
+    color: #0f1117;
     border-bottom-right-radius: var(--radius-sm);
 }
 
@@ -512,12 +504,12 @@ body {
 #chatInput:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-subtle);
+    box-shadow: 0 0 0 2px rgba(56, 168, 196, 0.3);
 }
 
 .send-chat-btn {
     background: var(--color-accent);
-    color: white;
+    color: #0f1117;
     border: none;
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-sm);
@@ -554,7 +546,6 @@ body {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-4);
-    box-shadow: var(--shadow-sm);
 }
 
 .ticker-selector label {
@@ -590,7 +581,7 @@ body {
 #tickerSearch:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-subtle);
+    box-shadow: 0 0 0 2px rgba(56, 168, 196, 0.3);
 }
 
 .dropdown-list {
@@ -600,10 +591,9 @@ body {
     right: 0;
     max-height: 320px;
     overflow-y: auto;
-    background: var(--color-bg-elevated);
+    background: var(--color-bg-subtle);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
     z-index: 1000;
 }
 
@@ -653,7 +643,6 @@ body {
     border: 1px solid var(--color-border);
     padding: var(--space-4);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
 }
 
 .stock-header {
@@ -857,7 +846,7 @@ body {
 
 .chart-range-btn.active {
     background: var(--color-accent);
-    color: white;
+    color: #0f1117;
     border-color: var(--color-accent);
 }
 
@@ -899,7 +888,7 @@ body {
 
 .chart-view-btn.active {
     background: var(--color-accent);
-    color: white;
+    color: #0f1117;
 }
 
 .chart-canvas-wrapper {
@@ -1516,7 +1505,7 @@ button:active:not(:disabled) {
 
 .filter-btn.active {
     background: var(--color-accent);
-    color: white;
+    color: #0f1117;
     border-color: var(--color-accent);
 }
 
@@ -1706,7 +1695,7 @@ button:active:not(:disabled) {
     cursor: pointer;
     font-size: 10px;
     font-weight: 600;
-    color: white;
+    color: #0f1117;
     transition: background 0.15s;
     font-family: var(--font-sans);
     text-transform: uppercase;
@@ -1845,11 +1834,10 @@ button:active:not(:disabled) {
         width: 48px;
         height: 48px;
         background: var(--color-accent);
-        color: white;
+        color: #0f1117;
         border: none;
         border-radius: 50%;
         cursor: pointer;
-        box-shadow: var(--shadow-lg);
         z-index: 999;
         display: flex;
         align-items: center;
