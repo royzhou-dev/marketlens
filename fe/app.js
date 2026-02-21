@@ -198,7 +198,6 @@ function highlightItem(index) {
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     await loadTickers();
-    populateWelcomeChips();
     await loadMarketStatus();
     setupEventListeners();
 });
@@ -244,23 +243,6 @@ async function loadTickers() {
     } catch (error) {
         console.error('Error loading tickers:', error);
     }
-}
-
-function populateWelcomeChips() {
-    const container = document.getElementById('welcomePopular');
-    if (!container) return;
-    const popular = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'META', 'AMZN', 'AMD'];
-    popular.forEach(sym => {
-        const chip = document.createElement('button');
-        chip.className = 'welcome-ticker-chip';
-        chip.textContent = sym;
-        chip.addEventListener('click', () => {
-            const found = allTickers.find(t => t.ticker === sym);
-            if (found) selectTicker(found.ticker, found.title);
-            else loadStockData(sym);
-        });
-        container.appendChild(chip);
-    });
 }
 
 function setupEventListeners() {
@@ -394,16 +376,6 @@ function setupEventListeners() {
         });
     });
 
-    // ⌘K / Ctrl+K: focus ticker search
-    document.addEventListener('keydown', e => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-            e.preventDefault();
-            const input = document.getElementById('tickerSearch');
-            input.focus();
-            input.select();
-        }
-    });
-
     // Setup chat listeners
     setupChatListeners();
 }
@@ -415,8 +387,7 @@ function switchTab(tabName) {
     tabButtons.forEach(btn => btn.classList.remove('active'));
     tabPanes.forEach(pane => pane.classList.remove('active'));
 
-    // Set all nav/mobile buttons with matching data-tab active
-    document.querySelectorAll(`[data-tab="${tabName}"]`).forEach(el => el.classList.add('active'));
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
 
     if (tabName === 'overview' && currentTicker) {
@@ -440,8 +411,6 @@ function clearStockDisplay() {
     document.getElementById('stockTitle').textContent = '';
     document.getElementById('stockPrice').textContent = '';
     document.getElementById('stockPrice').className = 'stock-price';
-    const exchangeEl = document.getElementById('stockExchange');
-    if (exchangeEl) exchangeEl.textContent = '';
     document.getElementById('companyDesc').textContent = '';
     document.getElementById('marketCap').textContent = '--';
     document.getElementById('openPrice').textContent = '--';
@@ -453,7 +422,6 @@ function clearStockDisplay() {
 
 async function loadStockData(ticker) {
     currentTicker = ticker;
-    document.getElementById('welcomeState')?.classList.add('hidden');
     document.getElementById('stockData').classList.remove('hidden');
     clearStockDisplay();
 
@@ -517,12 +485,7 @@ function renderTickerDetails(data) {
     if (data.results) {
         const results = data.results;
         document.getElementById('stockTitle').textContent =
-            `${results.ticker} — ${results.name}`;
-        // Show exchange badge if available
-        const exchangeEl = document.getElementById('stockExchange');
-        if (exchangeEl) {
-            exchangeEl.textContent = results.primary_exchange || results.market || '';
-        }
+            `${results.ticker} - ${results.name}`;
         document.getElementById('companyDesc').textContent =
             results.description || 'No description available';
         document.getElementById('marketCap').textContent =
@@ -1710,12 +1673,6 @@ function setupChatListeners() {
         mobileClose.addEventListener('click', toggleMobileChat);
     }
 
-    // Desktop chat collapse toggle
-    const collapseBtn = document.getElementById('chatCollapseBtn');
-    if (collapseBtn) {
-        collapseBtn.addEventListener('click', toggleChatPanel);
-    }
-
     // Send button and input
     document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
 
@@ -1731,14 +1688,6 @@ function setupChatListeners() {
 
     // Setup forecast listeners
     setupForecastListeners();
-}
-
-// Toggle chat panel on desktop (collapse/expand)
-function toggleChatPanel() {
-    const layout = document.querySelector('.app-layout');
-    const btn = document.getElementById('chatCollapseBtn');
-    const collapsed = layout.classList.toggle('chat-collapsed');
-    btn.classList.toggle('active', !collapsed);
 }
 
 // Toggle chat for mobile (full screen overlay)
@@ -1872,22 +1821,23 @@ function renderSentiment(data) {
 
 function updateSentimentGauge(score) {
     // Score ranges from -1 (bearish) to +1 (bullish)
-    // SVG needle: rotate around pivot (80, 85) via CSS transform-origin
+    // Map to rotation: -90deg (bearish) to +90deg (bullish)
+    const rotation = score * 90;
+
     const needle = document.getElementById('gaugeNeedle');
     if (needle) {
-        needle.style.transform = `rotate(${score * 90}deg)`;
+        needle.style.transform = `rotate(${rotation}deg)`;
     }
 
-    // SVG arc fill: dashoffset 110=neutral, 0=full bullish, 220=full bearish
+    // Update gauge fill color based on sentiment
     const fill = document.getElementById('gaugeFill');
     if (fill) {
-        fill.style.strokeDashoffset = Math.max(0, Math.min(220, 110 - (score * 110)));
         if (score > 0.2) {
-            fill.className = 'gauge-fill-arc bullish';
+            fill.className = 'gauge-fill bullish';
         } else if (score < -0.2) {
-            fill.className = 'gauge-fill-arc bearish';
+            fill.className = 'gauge-fill bearish';
         } else {
-            fill.className = 'gauge-fill-arc neutral';
+            fill.className = 'gauge-fill neutral';
         }
     }
 }
@@ -1959,11 +1909,11 @@ function renderSentimentPosts(posts) {
 
 function getPlatformIcon(platform) {
     const icons = {
-        'stocktwits': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-        'reddit': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><path d="M8.5 15.5s1.5 1.5 3.5 1.5 3.5-1.5 3.5-1.5"/></svg>`,
-        'twitter': `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>`
+        'stocktwits': '📈',
+        'reddit': '👽',
+        'twitter': '🐦'
     };
-    return icons[platform] || `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+    return icons[platform] || '💬';
 }
 
 function formatRelativeTime(timestamp) {
@@ -2005,12 +1955,6 @@ function resetSentimentUI() {
     const needle = document.getElementById('gaugeNeedle');
     if (needle) {
         needle.style.transform = 'rotate(0deg)';
-    }
-
-    const fill = document.getElementById('gaugeFill');
-    if (fill) {
-        fill.style.strokeDashoffset = '110';
-        fill.className = 'gauge-fill-arc';
     }
 }
 
