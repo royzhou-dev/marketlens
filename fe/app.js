@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 let allTickers = [];
 let currentTicker = '';
 let chartInstance = null;
@@ -234,7 +234,7 @@ function toggleTheme() {
 
 async function loadTickers() {
     try {
-        const response = await fetch('../company_tickers.json');
+        const response = await fetch('/company_tickers.json');
         const data = await response.json();
 
         allTickers = Object.values(data).map(item => ({
@@ -1206,7 +1206,7 @@ async function loadMarketStatus() {
     }
 
     try {
-        const response = await fetch('http://localhost:5000/api/market-status');
+        const response = await fetch('/api/market-status');
         const data = await response.json();
 
         // Store in cache
