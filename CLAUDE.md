@@ -99,6 +99,32 @@ TWITTER_BEARER_TOKEN= # Optional, paid ($100+/month)
 | Social scrapers | `be/social_scrapers.py` |
 | Design system | `.design-engineer/system.md` |
 
+## Deployment (Hugging Face Spaces)
+
+**Live URL**: `https://royzhou01-marketlens.hf.space`
+
+**Git setup**: Two branches — `main` for development, `hf-deploy` (orphan, no binary files in history) for HF.
+
+```bash
+# Deploy changes to HF Spaces
+git checkout hf-deploy
+git checkout main -- <changed-files>   # copy specific files from main
+git add <changed-files> && git commit -m "..."
+git push hf hf-deploy:main
+git checkout main
+```
+
+**API keys**: Set as Secrets in HF Space settings (not in code). Required: `POLYGON_API_KEY`, `GEMINI_API_KEY`.
+
+**Why orphan branch**: HF rejects `.pt`/`.pkl` binary files in regular git commits. The `hf-deploy` branch has a clean history with no model files. `be/forecast_models/` and `be/sentiment_cache/` are gitignored.
+
+**Production server**: gunicorn with `--worker-class gthread --workers 1 --threads 4 --timeout 300`. Port read from `PORT` env var (HF sets it to 7860).
+
+**HF free tier limits**:
+- Space sleeps after 48h inactivity (wakes in ~30s, loses in-memory FAISS + models)
+- No persistent storage (FAISS index rebuilt on restart)
+- FinBERT cold-start: ~30s on first sentiment request per session
+
 ## Development Rules
 
 1. Keep frontend vanilla JS - no frameworks
@@ -108,3 +134,5 @@ TWITTER_BEARER_TOKEN= # Optional, paid ($100+/month)
 5. Tool responses use `role="tool"` in Gemini API (not "user")
 6. Embeddings use `result.embeddings[0].values` with new google-genai SDK
 7. `chat_service.py` is legacy — all new chat work goes through `agent_service.py`
+8. All frontend API calls use relative URLs (`/api/...`) — never hardcode `localhost`
+9. `fe/app.js` line 1: `API_BASE = '/api'` — do not change to an absolute URL
