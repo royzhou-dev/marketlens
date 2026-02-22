@@ -10,6 +10,10 @@ FORECAST.md
 be/faiss_index/*.faiss
 be/faiss_index/*.json
 
+# ML model files (regenerated on demand)
+be/forecast_models/
+be/sentiment_cache/
+
 # Python
 __pycache__/
 *.py[cod]

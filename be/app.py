@@ -124,4 +124,4 @@ atexit.register(shutdown_handler)
 
 if __name__ == '__main__':
     from config import PORT
-    app.run(debug=True, port=PORT)
+    app.run(debug=False, port=PORT)

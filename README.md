@@ -1,3 +1,13 @@
+---
+title: MarketLens
+emoji: 📈
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # MarketLens - Stock Research Assistant
 
 A personal stock research assistant that provides real-time market information and AI-powered insights. Users can explore stock data, news, earnings, and performance metrics powered by the Polygon API.
