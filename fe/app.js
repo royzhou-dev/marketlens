@@ -638,7 +638,8 @@ let chartState = {
     hoveredIndex: -1,
     animationProgress: 0,
     animationFrame: null,
-    viewMode: 'line' // 'line' or 'candle'
+    viewMode: 'line', // 'line' or 'candle'
+    resizeObserver: null
 };
 
 function getChartColors() {
@@ -669,8 +670,6 @@ function renderChart(data) {
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
 
     chartState.data = data;
     chartState.canvas = canvas;
@@ -689,6 +688,23 @@ function renderChart(data) {
     // Set up mouse events
     canvas.onmousemove = handleChartMouseMove;
     canvas.onmouseleave = handleChartMouseLeave;
+
+    // Redraw on resize/zoom so canvas always fits its container
+    if (!chartState.resizeObserver) {
+        chartState.resizeObserver = new ResizeObserver(() => {
+            if (!chartState.data || !chartState.canvas) return;
+            const c = chartState.canvas;
+            const r = c.getBoundingClientRect();
+            if (r.width === 0) return;
+            const d = window.devicePixelRatio || 1;
+            c.width = r.width * d;
+            c.height = r.height * d;
+            chartState.ctx = c.getContext('2d');
+            chartState.ctx.scale(d, d);
+            drawChart(1);
+        });
+        chartState.resizeObserver.observe(canvas.parentElement);
+    }
 }
 
 function animateChart() {
